@@ -59,8 +59,7 @@ func (m *mockDomainsService) RecordsByName(ctx context.Context, domain, name str
 }
 
 func (m *mockDomainsService) RecordsByTypeAndName(ctx context.Context, domain, ofType, name string, opt *godo.ListOptions) ([]godo.DomainRecord, *godo.Response, error) {
-	// Not used in our tests
-	return nil, nil, nil
+	return m.Records(ctx, domain, opt)
 }
 
 func (m *mockDomainsService) Records(ctx context.Context, domain string, opts *godo.ListOptions) ([]godo.DomainRecord, *godo.Response, error) {

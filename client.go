@@ -2,6 +2,7 @@ package digitalocean
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -58,27 +59,17 @@ func (p *Provider) getDNSEntries(ctx context.Context, zone string) ([]libdns.Rec
 	return records, nil
 }
 
-func (p *Provider) addDNSEntry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	p.getClient()
-
-	entry := recordToGoDo(record)
-
-	rec, _, err := p.client.Domains.CreateRecord(ctx, zone, &entry)
-	if err != nil {
-		return record, err
-	}
-
-	return fromRecord(record, strconv.Itoa(rec.ID)), nil
-}
-
 func (p *Provider) removeDNSEntry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	p.getClient()
+
+	// Get record from remote
+	record, err := p.getDNSEntry(ctx, zone, record)
+	if err != nil {
+		return record, err
+	}
 
 	// Get ID from dns record
 	id, err := idFromRecord(record)
@@ -94,13 +85,55 @@ func (p *Provider) removeDNSEntry(ctx context.Context, zone string, record libdn
 	return record, nil
 }
 
-func (p *Provider) updateDNSEntry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
+func (p *Provider) upsertDNSENtry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	p.getClient()
 
-	// Get ID from dns record
+	fetchedRecord, err := p.getDNSEntry(ctx, zone, record)
+
+	if err != nil {
+		return record, err
+	}
+
+	if fetchedRecord.(DNS).ID == "" {
+		return p.addDNSEntry(ctx, zone, record)
+	}
+
+	record = fromRecord(record, fetchedRecord.(DNS).ID)
+
+	return p.updateDNSEntry(ctx, zone, record)
+}
+
+func (p *Provider) getDNSEntry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
+	entries, _, err := p.client.Domains.RecordsByTypeAndName(ctx, zone, record.RR().Name, record.RR().Type, &godo.ListOptions{})
+
+	if err != nil {
+		return record, err
+	} else if len(entries) > 1 {
+		return record, fmt.Errorf("found more than one record with name %s and type %s", record.RR().Name, record.RR().Type)
+	} else if len(entries) == 0 {
+		return fromRecord(record, ""), nil
+	}
+
+	record = fromGodo(entries[0])
+	return record, nil
+}
+
+func (p *Provider) addDNSEntry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
+	entry := recordToGoDo(record)
+
+	rec, _, err := p.client.Domains.CreateRecord(ctx, zone, &entry)
+	if err != nil {
+		return record, err
+	}
+
+	return fromRecord(record, strconv.Itoa(rec.ID)), nil
+}
+
+func (p *Provider) updateDNSEntry(ctx context.Context, zone string, record libdns.Record) (libdns.Record, error) {
+	// Get ID from DNS record
 	id, err := idFromRecord(record)
 	if err != nil {
 		return record, err

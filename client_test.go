@@ -206,3 +206,86 @@ func TestClient_updateDNSEntry(t *testing.T) {
 		t.Error("Client.updateDNSEntry() expected error for invalid ID, got nil")
 	}
 }
+
+func TestClient_upsertRecord_createRecord(t *testing.T) {
+	// Test sucessful creation call
+	p := setupTest(setupTestOptions{})
+	ctx := context.TODO()
+	record := libdns.RR{Type: "A", Name: "test", Data: "192.168.1.1", TTL: 3600 * time.Second}
+	resultRecord, err := p.upsertDNSENtry(ctx, "example.com", record)
+
+	if err != nil {
+		t.Errorf("Client.upsertDNSENtry() error = %v", err)
+	}
+
+	if resultRecord.RR().Type != record.Type ||
+		resultRecord.RR().Name != record.Name ||
+		resultRecord.RR().Data != record.Data ||
+		resultRecord.(DNS).ID != "12345" {
+		t.Errorf("Client.upsertDNSENtry() record mismatch, got = %v, want Type=%s, Name=%s, Data=%s, ID=12345",
+			resultRecord, record.Type, record.Name, record.Data)
+	}
+
+	// Test error in creation call
+	p = setupTest(setupTestOptions{MutationError: errors.New("Create API error")})
+	ctx = context.TODO()
+	_, err = p.upsertDNSENtry(ctx, "example.com", record)
+
+	if err == nil || err.Error() != "Create API error" {
+		t.Error("Client.upsertDNSENtry() expected error, got nil")
+	}
+}
+
+func TestClient_upsertRecord_updateEntry(t *testing.T) {
+	mockRecords := []godo.DomainRecord{{ID: 1, Type: "A", Name: "test", Data: "192.168.0.1", TTL: 3600}}
+	record := libdns.RR{Type: "A", Name: "test", Data: "192.168.1.1", TTL: 1800 * time.Second}
+
+	// Test successful update call
+	p := setupTest(setupTestOptions{Records: mockRecords})
+	ctx := context.TODO()
+	resultRecord, err := p.upsertDNSENtry(ctx, "example.com", record)
+
+	if err != nil {
+		t.Errorf("Client.upsertDNSENtry() error = %v", err)
+	}
+
+	if resultRecord.RR().Type != record.Type ||
+		resultRecord.RR().Name != record.Name ||
+		resultRecord.RR().Data != record.Data ||
+		resultRecord.(DNS).ID != "1" {
+		t.Errorf("Client.upsertDNSENtry() record mismatch, got = %v, want Type=%s, Name=%s, Data=%s, ID=1",
+			resultRecord, record.Type, record.Name, record.Data)
+	}
+
+	// Test error in creation call
+	p = setupTest(setupTestOptions{Records: mockRecords, MutationError: errors.New("Update API error")})
+	ctx = context.TODO()
+	_, err = p.upsertDNSENtry(ctx, "example.com", record)
+
+	if err == nil || err.Error() != "Update API error" {
+		t.Error("Client.upsertDNSENtry() expected error, got nil")
+	}
+}
+
+func TestClient_upsertRecord_errorGettingEntries(t *testing.T) {
+	mockRecords := []godo.DomainRecord{{ID: 1, Type: "A", Name: "test", Data: "192.168.0.1", TTL: 3600}, {ID: 2, Type: "A", Name: "test", Data: "192.168.0.2", TTL: 3600}}
+	record := libdns.RR{Type: "A", Name: "test", Data: "192.168.0.1", TTL: 3600 * time.Second}
+
+	// Test multiple records for same type and name
+	p := setupTest(setupTestOptions{Records: mockRecords})
+	ctx := context.TODO()
+	_, err := p.upsertDNSENtry(ctx, "example.com", record)
+
+	if err == nil {
+		t.Error("Client.upsertDNSENtry() expected error, got nil")
+	}
+
+	// Test error in getting entries
+	p = setupTest(setupTestOptions{QueryError: errors.New("Get API error")})
+	ctx = context.TODO()
+	_, err = p.upsertDNSENtry(ctx, "example.com", record)
+
+	if err == nil {
+		t.Error("Client.upsertDNSENtry() expected error, got nil")
+	}
+}
