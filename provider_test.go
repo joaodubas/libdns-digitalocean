@@ -18,7 +18,9 @@ type mockDomainsService struct {
 	record  *godo.DomainRecord
 
 	// Error to return (when testing error paths)
-	err error
+	queryError    error
+	mutationError error
+	err           error
 }
 
 func (m *mockDomainsService) List(ctx context.Context, opts *godo.ListOptions) ([]godo.Domain, *godo.Response, error) {
@@ -64,6 +66,8 @@ func (m *mockDomainsService) RecordsByTypeAndName(ctx context.Context, domain, o
 func (m *mockDomainsService) Records(ctx context.Context, domain string, opts *godo.ListOptions) ([]godo.DomainRecord, *godo.Response, error) {
 	if m.err != nil {
 		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.err
+	} else if m.queryError != nil {
+		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.queryError
 	}
 
 	resp := &godo.Response{
@@ -82,6 +86,8 @@ func (m *mockDomainsService) Records(ctx context.Context, domain string, opts *g
 func (m *mockDomainsService) CreateRecord(ctx context.Context, domain string, createRequest *godo.DomainRecordEditRequest) (*godo.DomainRecord, *godo.Response, error) {
 	if m.err != nil {
 		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.err
+	} else if m.mutationError != nil {
+		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.mutationError
 	}
 
 	record := &godo.DomainRecord{
@@ -98,6 +104,8 @@ func (m *mockDomainsService) CreateRecord(ctx context.Context, domain string, cr
 func (m *mockDomainsService) DeleteRecord(ctx context.Context, domain string, id int) (*godo.Response, error) {
 	if m.err != nil {
 		return &godo.Response{Response: &http.Response{StatusCode: 500}}, m.err
+	} else if m.mutationError != nil {
+		return &godo.Response{Response: &http.Response{StatusCode: 500}}, m.mutationError
 	}
 
 	return &godo.Response{Response: &http.Response{StatusCode: 204}}, nil
@@ -106,6 +114,8 @@ func (m *mockDomainsService) DeleteRecord(ctx context.Context, domain string, id
 func (m *mockDomainsService) EditRecord(ctx context.Context, domain string, id int, editRequest *godo.DomainRecordEditRequest) (*godo.DomainRecord, *godo.Response, error) {
 	if m.err != nil {
 		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.err
+	} else if m.mutationError != nil {
+		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.mutationError
 	}
 
 	record := &godo.DomainRecord{
@@ -122,6 +132,8 @@ func (m *mockDomainsService) EditRecord(ctx context.Context, domain string, id i
 func (m *mockDomainsService) GetRecord(ctx context.Context, domain string, id int) (*godo.DomainRecord, *godo.Response, error) {
 	if m.err != nil {
 		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.err
+	} else if m.queryError != nil {
+		return nil, &godo.Response{Response: &http.Response{StatusCode: 500}}, m.queryError
 	}
 
 	return m.record, &godo.Response{Response: &http.Response{StatusCode: 200}}, nil
@@ -136,13 +148,17 @@ type mockClient struct {
 type setupTestOptions struct {
 	Records       []godo.DomainRecord
 	Error         error
+	QueryError    error
+	MutationError error
 }
 
 // setupTest creates a Provider with a mock DigitalOcean client
 func setupTest(opts setupTestOptions) *Provider {
 	mock := &mockDomainsService{
-		records: opts.Records,
-		err:     opts.Error,
+		records:       opts.Records,
+		err:           opts.Error,
+		mutationError: opts.MutationError,
+		queryError:    opts.QueryError,
 	}
 
 	provider := &Provider{
