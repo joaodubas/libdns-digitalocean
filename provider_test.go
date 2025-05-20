@@ -132,11 +132,17 @@ type mockClient struct {
 	Domains mockDomainsService
 }
 
+// setupTestOptions is a struct that contains the options for the setupTest function
+type setupTestOptions struct {
+	Records       []godo.DomainRecord
+	Error         error
+}
+
 // setupTest creates a Provider with a mock DigitalOcean client
-func setupTest(records []godo.DomainRecord, err error) *Provider {
+func setupTest(opts setupTestOptions) *Provider {
 	mock := &mockDomainsService{
-		records: records,
-		err:     err,
+		records: opts.Records,
+		err:     opts.Error,
 	}
 
 	provider := &Provider{
@@ -205,7 +211,7 @@ func TestProvider_GetRecords(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(mockRecords, nil)
+	p := setupTest(setupTestOptions{Records: mockRecords})
 	ctx := context.Background()
 
 	records, err := p.GetRecords(ctx, "example.com.")
@@ -231,7 +237,7 @@ func TestProvider_GetRecords(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.GetRecords(ctx, "example.com.")
 	if err == nil {
@@ -249,7 +255,7 @@ func TestProvider_AppendRecords(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(nil, nil)
+	p := setupTest(setupTestOptions{})
 	ctx := context.Background()
 
 	appendedRecords, err := p.AppendRecords(ctx, "example.com.", []libdns.Record{testRecord})
@@ -272,7 +278,7 @@ func TestProvider_AppendRecords(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.AppendRecords(ctx, "example.com.", []libdns.Record{testRecord})
 	if err == nil {
@@ -293,7 +299,7 @@ func TestProvider_DeleteRecords(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(nil, nil)
+	p := setupTest(setupTestOptions{Records: []godo.DomainRecord{{ID: 1, Type: "A", Name: "test", Data: "192.168.0.1", TTL: 3600}}})
 	ctx := context.Background()
 
 	deletedRecords, err := p.DeleteRecords(ctx, "example.com.", []libdns.Record{testRecord})
@@ -312,7 +318,7 @@ func TestProvider_DeleteRecords(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.DeleteRecords(ctx, "example.com.", []libdns.Record{testRecord})
 	if err == nil {
@@ -320,7 +326,7 @@ func TestProvider_DeleteRecords(t *testing.T) {
 	}
 
 	// Test error case with invalid ID
-	p = setupTest(nil, nil)
+	p = setupTest(setupTestOptions{})
 
 	invalidIDRecord := DNS{
 		ID: "invalid", // Non-numeric ID
@@ -350,7 +356,7 @@ func TestProvider_SetRecords(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(nil, nil)
+	p := setupTest(setupTestOptions{})
 	ctx := context.Background()
 
 	setRecords, err := p.SetRecords(ctx, "example.com.", []libdns.Record{testRecord})
@@ -369,7 +375,7 @@ func TestProvider_SetRecords(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.SetRecords(ctx, "example.com.", []libdns.Record{testRecord})
 	if err == nil {
@@ -377,7 +383,7 @@ func TestProvider_SetRecords(t *testing.T) {
 	}
 
 	// Test error case with invalid ID
-	p = setupTest(nil, nil)
+	p = setupTest(setupTestOptions{})
 
 	invalidIDRecord := DNS{
 		ID: "invalid", // Non-numeric ID

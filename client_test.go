@@ -30,7 +30,7 @@ func TestClient_getDNSEntries(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(mockRecords, nil)
+	p := setupTest(setupTestOptions{Records: mockRecords})
 	ctx := context.Background()
 
 	records, err := p.getDNSEntries(ctx, "example.com")
@@ -56,7 +56,7 @@ func TestClient_getDNSEntries(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.getDNSEntries(ctx, "example.com")
 	if err == nil {
@@ -74,7 +74,7 @@ func TestClient_addDNSEntry(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(nil, nil)
+	p := setupTest(setupTestOptions{})
 	ctx := context.Background()
 
 	resultRecord, err := p.addDNSEntry(ctx, "example.com", testRecord)
@@ -93,7 +93,7 @@ func TestClient_addDNSEntry(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.addDNSEntry(ctx, "example.com", testRecord)
 	if err == nil {
@@ -113,7 +113,7 @@ func TestClient_removeDNSEntry(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(nil, nil)
+	p := setupTest(setupTestOptions{Records: []godo.DomainRecord{{ID: 1}}})
 	ctx := context.Background()
 
 	resultRecord, err := p.removeDNSEntry(ctx, "example.com", testRecord)
@@ -128,7 +128,7 @@ func TestClient_removeDNSEntry(t *testing.T) {
 	}
 
 	// Test error case - API error
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.removeDNSEntry(ctx, "example.com", testRecord)
 	if err == nil {
@@ -136,7 +136,7 @@ func TestClient_removeDNSEntry(t *testing.T) {
 	}
 
 	// Test error case - invalid ID
-	p = setupTest(nil, nil)
+	p = setupTest(setupTestOptions{})
 	invalidIDRecord := DNS{
 		ID: "invalid", // Non-numeric ID
 		Record: libdns.RR{
@@ -165,7 +165,7 @@ func TestClient_updateDNSEntry(t *testing.T) {
 	}
 
 	// Test successful call
-	p := setupTest(nil, nil)
+	p := setupTest(setupTestOptions{})
 	ctx := context.Background()
 
 	resultRecord, err := p.updateDNSEntry(ctx, "example.com", testRecord)
@@ -183,7 +183,7 @@ func TestClient_updateDNSEntry(t *testing.T) {
 	}
 
 	// Test error case - API error
-	p = setupTest(nil, errors.New("API error"))
+	p = setupTest(setupTestOptions{Error: errors.New("API error")})
 
 	_, err = p.updateDNSEntry(ctx, "example.com", testRecord)
 	if err == nil {
@@ -191,7 +191,7 @@ func TestClient_updateDNSEntry(t *testing.T) {
 	}
 
 	// Test error case - invalid ID
-	p = setupTest(nil, nil)
+	p = setupTest(setupTestOptions{})
 	invalidIDRecord := DNS{
 		ID: "invalid", // Non-numeric ID
 		Record: libdns.RR{
