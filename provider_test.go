@@ -293,7 +293,7 @@ func TestProvider_AppendRecords(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(setupTestOptions{Error: errors.New("API error")})
+	p = setupTest(setupTestOptions{MutationError: errors.New("Create API error")})
 
 	_, err = p.AppendRecords(ctx, "example.com.", []libdns.Record{testRecord})
 	if err == nil {
@@ -333,7 +333,7 @@ func TestProvider_DeleteRecords(t *testing.T) {
 	}
 
 	// Test error case
-	p = setupTest(setupTestOptions{Error: errors.New("API error")})
+	p = setupTest(setupTestOptions{MutationError: errors.New("Remove API error")})
 
 	_, err = p.DeleteRecords(ctx, "example.com.", []libdns.Record{testRecord})
 	if err == nil {
@@ -370,8 +370,18 @@ func TestProvider_SetRecords(t *testing.T) {
 		},
 	}
 
-	// Test successful call
-	p := setupTest(setupTestOptions{})
+	testEntries := []godo.DomainRecord{
+		{
+			ID:   1,
+			Type: "A",
+			Name: "test",
+			Data: "192.168.1.1",
+			TTL:  3600,
+		},
+	}
+
+	// Test successful update call
+	p := setupTest(setupTestOptions{Records: testEntries})
 	ctx := context.Background()
 
 	setRecords, err := p.SetRecords(ctx, "example.com.", []libdns.Record{testRecord})
@@ -389,8 +399,24 @@ func TestProvider_SetRecords(t *testing.T) {
 		t.Errorf("Provider.SetRecords() record ID mismatch, got = %v, want = %v", setRecords[0].(DNS).ID, testRecord.ID)
 	}
 
+	// Test successfull create call
+	p = setupTest(setupTestOptions{})
+	ctx = context.TODO()
+	setRecords, err = p.SetRecords(ctx, "example.com.", []libdns.Record{testRecord.Record})
+	if err != nil {
+		t.Errorf("Provider.SetRecords() error = %v", err)
+	}
+	if len(setRecords) == 0 {
+		t.Error("Provider.SetRecords() returned no records")
+	} else if len(setRecords) > 1 {
+		t.Errorf("Provider.SetRecords() returned %d records, want 1", len(setRecords))
+	}
+	if setRecords[0].(DNS).ID != "12345" {
+		t.Errorf("Provider.SetRecords() record ID mismatch, got = %v, want = %v", setRecords[0].(DNS).ID, "12345")
+	}
+
 	// Test error case
-	p = setupTest(setupTestOptions{Error: errors.New("API error")})
+	p = setupTest(setupTestOptions{MutationError: errors.New("Create API error")})
 
 	_, err = p.SetRecords(ctx, "example.com.", []libdns.Record{testRecord})
 	if err == nil {
@@ -398,7 +424,7 @@ func TestProvider_SetRecords(t *testing.T) {
 	}
 
 	// Test error case with invalid ID
-	p = setupTest(setupTestOptions{})
+	p = setupTest(setupTestOptions{QueryError: errors.New("Retrieval API error")})
 
 	invalidIDRecord := DNS{
 		ID: "invalid", // Non-numeric ID

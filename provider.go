@@ -34,7 +34,7 @@ func (p *Provider) AppendRecords(ctx context.Context, zone string, records []lib
 	var appendedRecords []libdns.Record
 
 	for _, record := range records {
-		newRecord, err := p.addDNSEntry(ctx, p.unFQDN(zone), record)
+		newRecord, err := p.upsertDNSENtry(ctx, p.unFQDN(zone), record)
 		if err != nil {
 			return nil, err
 		}
@@ -65,9 +65,7 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 	var setRecords []libdns.Record
 
 	for _, record := range records {
-		// TODO: if there is no ID, look up the Name, and fill it in, or call
-		//       newRecord, err := p.addDNSEntry(ctx, zone, record)
-		setRecord, err := p.updateDNSEntry(ctx, p.unFQDN(zone), record)
+		setRecord, err := p.upsertDNSENtry(ctx, p.unFQDN(zone), record)
 		if err != nil {
 			return setRecords, err
 		}
